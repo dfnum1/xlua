@@ -117,6 +117,13 @@ namespace XLua
 #endif
 
                 AddBuildin("CS", StaticLuaCallbacks.LoadCS);
+				AddBuildin("pb", XLua.LuaDLL.Lua.LoadPb);
+				AddBuildin("lsqlite3", XLua.LuaDLL.Lua.LoadLSQLite);
+				AddBuildin("requireStreams", ScriptLuaModule.RequireStreams);
+				//AddBuildin("requireStreams111", ScriptLuaModule.RequireStreams111);
+				//AddBuildin("requireStreams222", ScriptLuaModule.RequireStreams222);
+				//AddBuildin("requireStreams333", ScriptLuaModule.RequireStreams333);
+				//AddBuildin("requireStreams444", ScriptLuaModule.RequireStreams444);
 
                 LuaAPI.lua_newtable(rawL); //metatable of indexs and newindexs functions
                 LuaAPI.xlua_pushasciistring(rawL, "__index");

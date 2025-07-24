@@ -119,6 +119,7 @@ namespace XLua
                 AddBuildin("CS", StaticLuaCallbacks.LoadCS);
 				AddBuildin("pb", XLua.LuaDLL.Lua.LoadPb);
 				AddBuildin("lsqlite3", XLua.LuaDLL.Lua.LoadLSQLite);
+				AddBuildin("rapidjson", XLua.LuaDLL.Lua.LoadRapidJson);
 				AddBuildin("requireStreams", ScriptLuaModule.RequireStreams);
 				//AddBuildin("requireStreams111", ScriptLuaModule.RequireStreams111);
 				//AddBuildin("requireStreams222", ScriptLuaModule.RequireStreams222);

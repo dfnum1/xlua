@@ -10,6 +10,7 @@
 ## C# 下 Lua 编程支持
 
 xLua 为 Unity、.Net、Mono 等 C# 环境增加 Lua 脚本编程的能力，借助 xLua，这些 Lua 代码可以方便的和 C# 相互调用。
+在此基础上添加流式require 方式
 
 <br/>
 

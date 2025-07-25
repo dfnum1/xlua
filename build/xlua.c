@@ -203,70 +203,20 @@ LUA_API void xlua_pushlstring (lua_State *L, const char *s, int len) {
 
 LUALIB_API int xluaL_loadbuffer (lua_State *L, const char *buff, int size,
                                 const char *name) {
+#ifdef USING_LUAJIT
+	return 0;
+#else
 	return luaL_loadbuffer(L, buff, size, name);
+#endif
 }
 
-LUALIB_API int xluaL_loadbufferStream (lua_State *L, const char * buffer, int len)
+LUALIB_API int xluaL_loadbufferStream (lua_State *L, const char * buffer, int len, int offset)
 {
-	int offset = 0;
-	char name[256];
-
-	// 获取 package.loaded
-	lua_getfield(L, LUA_REGISTRYINDEX, LUA_LOADED_TABLE);
-
-	while (offset < len) {
-		if (offset + 1 > len) break;
-		unsigned char nameSize = (unsigned char)buffer[offset++];
-		if (nameSize > 255) nameSize = 255;
-		if (offset + nameSize > len) break;
-		memcpy(name, buffer + offset, nameSize);
-		name[nameSize] = '\0';
-		offset += nameSize;
-
-		if (offset + 4 > len) break;
-		unsigned int chunkSize = 0;
-		chunkSize |= (unsigned char)buffer[offset];
-		chunkSize |= ((unsigned char)buffer[offset + 1]) << 8;
-		chunkSize |= ((unsigned char)buffer[offset + 2]) << 16;
-		chunkSize |= ((unsigned char)buffer[offset + 3]) << 24;
-		offset += 4;
-
-		if (offset + (int)chunkSize > len) break;
-
-		// 检查 package.loaded[name] 是否已加载
-		lua_getfield(L, -1, name);
-		int already_loaded = lua_toboolean(L, -1);
-		lua_pop(L, 1);
-		if (already_loaded) {
-			offset += chunkSize;
-			continue;
-		}
-
-		// 加载 chunk
-		if (luaL_loadbuffer(L, buffer + offset, chunkSize, name) != LUA_OK) {
-			return lua_error(L);
-		}
-		offset += chunkSize;
-
-		// 执行 chunk
-		lua_pushstring(L, name);           // 1st arg: 模块名
-		lua_pushliteral(L, ":stream:");    // 2nd arg: loader data
-		if (lua_pcall(L, 2, 1, 0) != LUA_OK) {
-			return lua_error(L);
-		}
-
-		// package.loaded[name] = 返回值 or true
-		if (!lua_isnil(L, -1))
-			lua_setfield(L, -2, name);
-		else {
-			lua_pop(L, 1);
-			lua_pushboolean(L, 1);
-			lua_setfield(L, -2, name);
-		}
-	}
-
-	// 返回 package.loaded
-	return 1;
+#if USING_LUAJIT
+	return 0;
+#else
+	return lua_requireStream(L, buffer, len, offset);
+#endif
 }
 
 static int c_lua_gettable(lua_State* L) {    

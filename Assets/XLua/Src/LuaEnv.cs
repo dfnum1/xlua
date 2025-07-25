@@ -126,6 +126,8 @@ namespace XLua
 				//AddBuildin("requireStreams333", ScriptLuaModule.RequireStreams333);
 				//AddBuildin("requireStreams444", ScriptLuaModule.RequireStreams444);
 
+				LuaAPI.lua_registerUserLoadStreamCallback();
+
                 LuaAPI.lua_newtable(rawL); //metatable of indexs and newindexs functions
                 LuaAPI.xlua_pushasciistring(rawL, "__index");
                 LuaAPI.lua_pushstdcallcfunction(rawL, StaticLuaCallbacks.MetaFuncIndex);

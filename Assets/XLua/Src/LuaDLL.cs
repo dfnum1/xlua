@@ -30,6 +30,9 @@ namespace XLua.LuaDLL
 #endif
 #endif
 
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate int UserLoadStreamCallback(IntPtr L, int funcidx, int top);
+
 
     public partial class Lua
 	{
@@ -579,6 +582,17 @@ namespace XLua.LuaDLL
 
         [DllImport(LUADLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr xlua_gl(IntPtr L);
+		
+		[DllImport(LUADLL, CallingConvention = CallingConvention.Cdecl)]
+        static extern IntPtr lua_registerUserLoadStreamCallback(IntPtr func);
+		
+		public static void registerUserLoadStreamCallback(CSharpWrapperCaller wrapper_caller)
+        {
+#if XLUA_GENERAL || (UNITY_WSA && !UNITY_EDITOR)
+            GCHandle.Alloc(wrapper);
+#endif
+            xlua_set_csharp_wrapper_caller(Marshal.GetFunctionPointerForDelegate(wrapper_caller));
+        }
 
 #if GEN_CODE_MINIMIZE
         [DllImport(LUADLL, CallingConvention = CallingConvention.Cdecl)]

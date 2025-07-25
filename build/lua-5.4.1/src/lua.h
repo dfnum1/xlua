@@ -243,7 +243,7 @@ LUA_API void  (lua_pushboolean) (lua_State *L, int b);
 LUA_API void  (lua_pushlightuserdata) (lua_State *L, void *p);
 LUA_API int   (lua_pushthread) (lua_State *L);
 
-LUA_API int   (lua_requireStream) (lua_State *L, const char *s, int len);
+LUA_API int   (lua_requireStream) (lua_State *L, const char *s, int len, int offset);
 
 
 /*

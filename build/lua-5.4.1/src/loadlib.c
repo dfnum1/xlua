@@ -684,12 +684,12 @@ static int ll_require (lua_State *L) {
   return 2;  /* return module result and loader data */
 }
 
-typedef int(*UnityLoadStreamCallback)(const char* filename, const void** outBuffer, int* outLen);
-static UnityLoadStreamCallback g_UnityLoadStreamCallback = NULL;
+typedef int(*UserLoadStreamCallback)(const char* filename, const void** outBuffer, int* outLen, int* outOffset);
+static UserLoadStreamCallback g_UserLoadStreamCallback = NULL;
 
-LUA_API void lua_RegisterUnityLoadStreamCallback(UnityLoadStreamCallback cb)
+LUA_API void lua_registerUserLoadStreamCallback(UserLoadStreamCallback cb)
 {
-	g_UnityLoadStreamCallback = cb;
+	g_UserLoadStreamCallback = cb;
 }
 
 static int ll_streamrequire(lua_State *L) 
@@ -697,12 +697,13 @@ static int ll_streamrequire(lua_State *L)
     const char* modname = luaL_checkstring(L, 1);
 	int found = 0;
 	size_t chunk_len = 0;
+	int chunk_offset =0;
 	const char* chunk_data = NULL;
-    if (g_UnityLoadStreamCallback != NULL)
+    if (g_UserLoadStreamCallback != NULL)
     {
 		const void* buffer = NULL;
 		int buflen = 0;
-        found = g_UnityLoadStreamCallback(modname, &buffer, &buflen);
+        found = g_UserLoadStreamCallback(modname, &buffer, &buflen, &chunk_offset);
         chunk_len = buflen;
         chunk_data = (const char*)buffer;
     }
@@ -769,69 +770,69 @@ static int ll_streamrequire(lua_State *L)
 	}
 
 	// 调用 lua_requireStream
-	return lua_requireStream(L, chunk_data, (int)chunk_len);
+	return lua_requireStream(L, chunk_data, (int)chunk_len, chunk_offset);
 }
 
-LUA_API int lua_requireStream(lua_State* L, const char *buffer, int len) {
+LUA_API int lua_requireStream(lua_State* L, const char *buffer, int len, int bufferOffset) {
     int offset = 0;
-    char name[256];
+	char name[256];
 
-    // 获取 package.loaded
-    lua_getfield(L, LUA_REGISTRYINDEX, LUA_LOADED_TABLE);
+	// 获取 package.loaded
+	lua_getfield(L, LUA_REGISTRYINDEX, LUA_LOADED_TABLE);
 
-    while (offset < len) {
-        if (offset + 1 > len) break;
-        unsigned char nameSize = (unsigned char)buffer[offset++];
-        if (nameSize > 255) nameSize = 255;
-        if (offset + nameSize > len) break;
-        memcpy(name, buffer + offset, nameSize);
-        name[nameSize] = '\0';
-        offset += nameSize;
+	while (offset < len) {
+		if (offset + 1 > len) break;
+		unsigned char nameSize = (unsigned char)buffer[offset++];
+		if (nameSize > 255) nameSize = 255;
+		if (offset + nameSize > len) break;
+		memcpy(name, buffer + offset, nameSize);
+		name[nameSize] = '\0';
+		offset += nameSize;
 
-        if (offset + 4 > len) break;
-        unsigned int chunkSize = 0;
-        chunkSize |= (unsigned char)buffer[offset];
-        chunkSize |= ((unsigned char)buffer[offset + 1]) << 8;
-        chunkSize |= ((unsigned char)buffer[offset + 2]) << 16;
-        chunkSize |= ((unsigned char)buffer[offset + 3]) << 24;
-        offset += 4;
+		if (offset + 4 > len) break;
+		unsigned int chunkSize = 0;
+		chunkSize |= (unsigned char)buffer[offset];
+		chunkSize |= ((unsigned char)buffer[offset + 1]) << 8;
+		chunkSize |= ((unsigned char)buffer[offset + 2]) << 16;
+		chunkSize |= ((unsigned char)buffer[offset + 3]) << 24;
+		offset += 4;
 
-        if (offset + (int)chunkSize > len) break;
+		if (offset + (int)chunkSize > len) break;
 
-        // 检查 package.loaded[name] 是否已加载
-        lua_getfield(L, -1, name);
-        int already_loaded = lua_toboolean(L, -1);
-        lua_pop(L, 1);
-        if (already_loaded) {
-            offset += chunkSize;
-            continue;
-        }
+		// 检查 package.loaded[name] 是否已加载
+		lua_getfield(L, -1, name);
+		int already_loaded = lua_toboolean(L, -1);
+		lua_pop(L, 1);
+		if (already_loaded) {
+			offset += chunkSize;
+			continue;
+		}
 
-        // 加载 chunk
-        if (luaL_loadbuffer(L, buffer + offset, chunkSize, name) != LUA_OK) {
-            return lua_error(L);
-        }
-        offset += chunkSize;
+		// 加载 chunk
+		if (luaL_loadbuffer(L, buffer + offset, chunkSize, name) != LUA_OK) {
+			return lua_error(L);
+		}
+		offset += chunkSize;
 
-        // 执行 chunk
-        lua_pushstring(L, name);           // 1st arg: 模块名
-        lua_pushliteral(L, ":stream:");    // 2nd arg: loader data
-        if (lua_pcall(L, 2, 1, 0) != LUA_OK) {
-            return lua_error(L);
-        }
+		// 执行 chunk
+		lua_pushstring(L, name);           // 1st arg: 模块名
+		lua_pushliteral(L, ":stream:");    // 2nd arg: loader data
+		if (lua_pcall(L, 2, 1, 0) != LUA_OK) {
+			return lua_error(L);
+		}
 
-        // package.loaded[name] = 返回值 or true
-        if (!lua_isnil(L, -1))
-            lua_setfield(L, -2, name);
-        else {
-            lua_pop(L, 1);
-            lua_pushboolean(L, 1);
-            lua_setfield(L, -2, name);
-        }
-    }
+		// package.loaded[name] = 返回值 or true
+		if (!lua_isnil(L, -1))
+			lua_setfield(L, -2, name);
+		else {
+			lua_pop(L, 1);
+			lua_pushboolean(L, 1);
+			lua_setfield(L, -2, name);
+		}
+	}
 
-    // 返回 package.loaded
-    return 1;
+	// 返回 package.loaded
+	return 1;
 }
 
 /* }====================================================== */
@@ -854,7 +855,7 @@ static const luaL_Reg pk_funcs[] = {
 
 static const luaL_Reg ll_funcs[] = {
   {"require", ll_require},
-  {"streamrequire", ll_streamrequire},
+ // {"streamrequire", ll_streamrequire},
   {NULL, NULL}
 };
 

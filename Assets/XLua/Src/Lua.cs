@@ -32,12 +32,12 @@ namespace XLua.LuaDLL
         }
 
         [DllImport(LUADLL, CallingConvention = CallingConvention.Cdecl)]
-        static extern int xluaL_loadbufferStream(System.IntPtr L, byte[] streamBuffer, int size);
+        static extern int xluaL_loadbufferStream(System.IntPtr L, byte[] streamBuffer, int size, int offset);
 
         [MonoPInvokeCallback(typeof(LuaDLL.lua_CSFunction))]
-        public static int RequireStream(System.IntPtr L, byte[] streamBuffer, int size)
+        public static int RequireStream(System.IntPtr L, byte[] streamBuffer, int size, int offset)
         {
-            return xluaL_loadbufferStream(L, streamBuffer, size);
+            return xluaL_loadbufferStream(L, streamBuffer, size, offset);
         }
     }
 }
